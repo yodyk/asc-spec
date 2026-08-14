@@ -18,7 +18,7 @@
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin, SPEC_VERSION } from "./supabase";
-import { listTabTitles, batchGet, getGrid, findCol, cell } from "./sheets";
+import { listTabs, getCsvGrid, findHeaderRow, findCol, cell } from "./sheets";
 import { changeKind, groupOf, parseMapped } from "./spec";
 
 // Tabs that are NOT per-event definitions.
@@ -48,43 +48,52 @@ const hash = (obj: unknown) =>
   createHash("sha1").update(JSON.stringify(obj)).digest("hex");
 
 // ── 1. read + parse the sheet ───────────────────────────────────────────────
-export async function readSpec(spreadsheetId: string): Promise<PEvent[]> {
-  const titles = await listTabTitles(spreadsheetId);
-  const eventTabs = titles.filter((t) => t.startsWith("asc_") && !SKIP_TABS.has(t));
+export async function readSpec(): Promise<PEvent[]> {
+  const tabs = await listTabs(); // name → gid
+  const gidFor = (name: string) => tabs.get(name);
+  const eventTabs = [...tabs.keys()].filter((t) => t.startsWith("asc_") && !SKIP_TABS.has(t));
 
-  // Event_List → per-event { type, description, change }.  Cols: A=change B=name E=type F=description
+  // Event_List → per-event { type, description, change }.
+  // Fixed columns (merged cells offset the values): A=change B=name E=type F=description.
   const evMeta = new Map<string, { type: string; description: string; change: string }>();
-  const el = await getGrid(spreadsheetId, "Event_List!A5:F400");
-  for (const row of el) {
-    const name = cell(row, 1);
-    if (name.startsWith("asc_")) {
-      evMeta.set(name, { type: cell(row, 4), description: cell(row, 5), change: cell(row, 0) });
+  const elGid = gidFor("Event_List");
+  if (elGid) {
+    const g = await getCsvGrid(elGid);
+    const h = findHeaderRow(g, "event name");
+    for (const row of g.slice(h + 1)) {
+      const name = cell(row, 1);
+      if (name.startsWith("asc_")) {
+        evMeta.set(name, { type: cell(row, 4), description: cell(row, 5), change: cell(row, 0) });
+      }
     }
   }
 
   // Parameter_List → master { definition, example, value_type } for backfill.
   const paramDict = new Map<string, { definition: string; example: string; value_type: string }>();
-  const pl = await getGrid(spreadsheetId, "Parameter_List!A4:AE1050");
-  const plHead = pl[0] || [];
-  const cPN = findCol(plHead, "parameter name");
-  const cPD = findCol(plHead, "parameter definition", "definition");
-  const cPE = findCol(plHead, "example");
-  const cPV = findCol(plHead, "value type");
-  for (const row of pl.slice(1)) {
-    const nm = cell(row, cPN);
-    if (nm && !paramDict.has(nm)) {
-      paramDict.set(nm, { definition: cell(row, cPD), example: cell(row, cPE), value_type: cell(row, cPV) });
+  const plGid = gidFor("Parameter_List");
+  if (plGid) {
+    const g = await getCsvGrid(plGid);
+    const h = findHeaderRow(g, "parameter name");
+    const head = g[h] || [];
+    const cPN = findCol(head, "parameter name");
+    const cPD = findCol(head, "parameter definition", "definition");
+    const cPE = findCol(head, "example");
+    const cPV = findCol(head, "value type");
+    for (const row of g.slice(h + 1)) {
+      const nm = cell(row, cPN);
+      if (nm && !paramDict.has(nm)) {
+        paramDict.set(nm, { definition: cell(row, cPD), example: cell(row, cPE), value_type: cell(row, cPV) });
+      }
     }
   }
 
   // Per-event tabs.
-  const ranges = eventTabs.map((t) => `${t}!A4:CS220`);
-  const grids = await batchGet(spreadsheetId, ranges);
-
   const events: PEvent[] = [];
-  eventTabs.forEach((tab, i) => {
-    const grid = grids[ranges[i]] || [];
-    const head = grid[0] || [];
+  for (const tab of eventTabs) {
+    const g = await getCsvGrid(gidFor(tab)!);
+    const h = findHeaderRow(g, "parameters"); // "PARAMETERS" (plural) — avoids the nav row's "Parameter List"
+    if (h < 0) continue;
+    const head = g[h];
     const cP = findCol(head, "parameters");
     const cReq = findCol(head, "required");
     const cEx = findCol(head, "example");
@@ -96,7 +105,7 @@ export async function readSpec(spreadsheetId: string): Promise<PEvent[]> {
     const cMap = findCol(head, "mapped value list");
 
     const params: PParam[] = [];
-    for (const row of grid.slice(1)) {
+    for (const row of g.slice(h + 1)) {
       const name = cell(row, cP);
       if (!name) continue;
       const dict = paramDict.get(name);
@@ -123,7 +132,7 @@ export async function readSpec(spreadsheetId: string): Promise<PEvent[]> {
       evChange = "UPDATED";
 
     events.push({ name: tab, type: meta.type, description: meta.description, change: evChange, params });
-  });
+  }
 
   return events;
 }
@@ -362,8 +371,6 @@ export type SyncSummary = {
 };
 
 export async function runSync(): Promise<SyncSummary> {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
-  if (!spreadsheetId) throw new Error("Missing GOOGLE_SHEETS_ID.");
   const admin = supabaseAdmin();
 
   const { data: run } = await admin
@@ -374,7 +381,7 @@ export async function runSync(): Promise<SyncSummary> {
   const runId = run?.id as string | undefined;
 
   try {
-    const events = await readSpec(spreadsheetId);
+    const events = await readSpec();
     await mirrorRaw(admin, events);
     const res = await promote(admin, events);
 

@@ -62,16 +62,23 @@ git push -u origin main
 
 ---
 
-## Later (fast-follow): turn on the auto-sync
+## Turn on the auto-sync (daily updates from the sheet)
 
-Right now the site shows the seeded snapshot. To make it update itself daily from the Google Sheet,
-add these env vars in Vercel (**Settings → Environment Variables**) and redeploy — no code changes:
+The sync reads your sheet's **"publish to web"** CSV directly — **no Google Cloud / service
+account needed**. You only add two secrets to Vercel and redeploy:
 
-- `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Settings → API → service_role key)
-- `GOOGLE_SHEETS_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
-  (see the main `README.md` for the 3-step service-account setup)
-- `CRON_SECRET` and `SYNC_SECRET` (any long random string; set both to the same value)
+1. **Vercel → Settings → Environment Variables**, add (as normal vars — **not** `NEXT_PUBLIC_`):
+   | Name | Value |
+   |---|---|
+   | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → the **service_role / secret** key (starts `sb_secret_…` or `eyJ…`) — this lets the sync write. |
+   | `CRON_SECRET` | any long random string |
+   | `SYNC_SECRET` | set it to the **same** value as `CRON_SECRET` |
+2. **Redeploy** (Deployments → top → ⋯ → Redeploy).
+3. The daily **6:00 UTC** cron (`vercel.json`) now runs automatically. To pull immediately instead
+   of waiting, trigger it once:
+   ```bash
+   curl -X POST https://asc-spec.vercel.app/api/sync -H "Authorization: Bearer YOUR-SYNC_SECRET"
+   ```
+   You should get back a small JSON summary like `{"ok":true,"events":23,...}`.
 
-`vercel.json` already registers the daily 6:00 UTC cron. Until you add these, the cron just no-ops
-safely and the seeded data stays put — updating it manually is a quick re-run of `seed.sql` or a
-`POST /api/sync`.
+Until you add those, the cron just no-ops safely and the seeded data stays put.

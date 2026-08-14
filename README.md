@@ -79,13 +79,10 @@ Run the migration against your Supabase project — either paste
 supabase db push        # if using the Supabase CLI + linked project
 ```
 
-### 4. Google Sheets access (service account)
-1. In Google Cloud: create a project → enable **Google Sheets API** → create a **service
-   account** → add a **JSON key**.
-2. Copy the service account's email and share the **ASC spec Google Sheet** with it
-   (Viewer is enough).
-3. Put the email + private key into `.env.local` (`GOOGLE_SERVICE_ACCOUNT_EMAIL`,
-   `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`) and the sheet ID into `GOOGLE_SHEETS_ID`.
+### 4. Source sheet
+Nothing to configure. The sync reads the sheet's **"publish to web"** CSV endpoints, and the
+published-doc id is derived from `SHEET_URL` in `src/lib/config.ts`. Just make sure the sheet
+stays **published to the web** (File → Share → Publish to web → entire document).
 
 ### 5. Environment
 See `.env.example` for the full list. The essentials:
@@ -94,9 +91,7 @@ See `.env.example` for the full list. The essentials:
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public read access |
 | `SUPABASE_SERVICE_ROLE_KEY` | server-only; used by the sync to write |
-| `GOOGLE_SHEETS_ID` | the source spreadsheet |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` / `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | sheet read auth |
-| `SYNC_SECRET` | bearer token the cron must send to `/api/sync` |
+| `SYNC_SECRET` / `CRON_SECRET` | bearer token the cron must send to `/api/sync` |
 | `NEXT_PUBLIC_SPEC_VERSION` | shown in the UI + stamped on change_log rows |
 
 ### 6. Run

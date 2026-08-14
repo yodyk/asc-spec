@@ -4,6 +4,7 @@ import { SPEC_VERSION } from "@/lib/supabase";
 import { BrandWordmark } from "@/components/brand";
 import { Icon, type IconName } from "@/components/icons";
 import { SearchForm } from "@/components/SearchForm";
+import { TrySuggestions } from "@/components/TrySuggestions";
 
 const TILE_META: { href: string; icon: IconName; title: string; desc: string; key: "events" | "parameters" | "mappings" | "changed" }[] = [
   { href: "/events", icon: "events", title: "Events", desc: "Grouped by what they track.", key: "events" },
@@ -11,8 +12,6 @@ const TILE_META: { href: string; icon: IconName; title: string; desc: string; ke
   { href: "/mappings", icon: "mappings", title: "Mappings", desc: "Parameters with a fixed list of values.", key: "mappings" },
   { href: "/changes", icon: "changes", title: "Changed", desc: "Recent updates, tracked automatically.", key: "changed" },
 ];
-const EXAMPLES = ["page_type", "asc_form_submission", "comm_outcome", "department"];
-
 export default async function OverviewPage() {
   const { counts, groups, recent } = await getOverview();
   return (
@@ -27,14 +26,7 @@ export default async function OverviewPage() {
           what’s new in each release.
         </p>
         <SearchForm big />
-        <div className="hero-chips">
-          <span className="lbl">Try</span>
-          {EXAMPLES.map((x) => (
-            <Link key={x} href={`/search?q=${encodeURIComponent(x)}`} className="schip">
-              {x}
-            </Link>
-          ))}
-        </div>
+        <TrySuggestions />
         <div className="hero-fresh">
           <span className="dot" /> Spec {SPEC_VERSION} · current release
         </div>

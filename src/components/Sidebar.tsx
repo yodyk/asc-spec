@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Icon, type IconName } from "./icons";
-import { BrandIcon } from "./brand";
+import { BrandIcon, GoogleG } from "./brand";
 import { ThemeControl } from "./ThemeControl";
 import { GROUPS } from "@/lib/spec";
 import { SHEET_URL } from "@/lib/config";
@@ -33,7 +33,6 @@ export function Sidebar({
     .filter((n) => navEvents.some((e) => e.group === n))
     .concat(navEvents.some((e) => e.group === "Other") ? ["Other"] : []);
   const active = (href: string) => (href === "/" ? path === "/" : path === href || path.startsWith(href + "/"));
-  const dot = (c: string) => (c === "Conversion" ? "var(--accent)" : "var(--eng)");
   const toggleGroup = (g: string) =>
     setOpenGroups((s) => {
       const n = new Set(s);
@@ -95,7 +94,6 @@ export function Sidebar({
                         onClick={onNavigate}
                         className={`treeitem ${currentEvent === e.name ? "on" : ""}`}
                       >
-                        <span className="tdot" style={{ background: dot(e.category) }} />
                         {e.name}
                       </Link>
                     ))}
@@ -113,8 +111,8 @@ export function Sidebar({
 
       <div className="navbtm">
         <a className="sheetlink full" href={SHEET_URL} target="_blank" rel="noopener noreferrer">
-          <Icon name="external" size={15} />
-          View Spec Sheet Instead
+          <GoogleG />
+          View Google Sheet
         </a>
       </div>
 

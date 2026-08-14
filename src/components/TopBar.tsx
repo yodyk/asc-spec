@@ -3,6 +3,7 @@ import { Fragment } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Icon } from "./icons";
+import { GoogleG } from "./brand";
 import { SearchForm } from "./SearchForm";
 import { SHEET_URL } from "@/lib/config";
 
@@ -52,8 +53,8 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
       <div className="topright">
         <SearchForm />
         <a className="sheetlink" href={SHEET_URL} target="_blank" rel="noopener noreferrer">
-          <Icon name="external" size={15} />
-          View Spec Sheet Instead
+          <GoogleG />
+          View Google Sheet
         </a>
       </div>
     </div>

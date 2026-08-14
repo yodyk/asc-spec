@@ -33,7 +33,7 @@ export type EventListItem = {
 export async function getEventList(): Promise<EventListItem[]> {
   const { data, error } = await supabase
     .from("events")
-    .select("name,type,description,change_status, event_parameters(required)")
+    .select("name,type,description,change_status,event_parameters(required)")
     .order("name");
   if (error) throw error;
   return (data ?? []).map((e: any) => {
@@ -80,7 +80,7 @@ export async function getEvent(name: string): Promise<EventDetail | null> {
   const { data, error } = await supabase
     .from("events")
     .select(
-      "name,type,description,change_status, event_parameters(required,example,value_type,formatting,fallback,mapped_list_raw,display_order,change_status, parameters(name,definition))"
+      "name,type,description,change_status,event_parameters(required,example,value_type,formatting,fallback,mapped_list_raw,display_order,change_status,parameters(name,definition))"
     )
     .eq("name", name)
     .maybeSingle();
@@ -132,7 +132,7 @@ export type ParamListItem = {
 export async function getParameterList(): Promise<ParamListItem[]> {
   const { data, error } = await supabase
     .from("parameters")
-    .select("name,value_type,definition,is_mapped, event_parameters(event_id), mapped_values(value)")
+    .select("name,value_type,definition,is_mapped,event_parameters(event_id),mapped_values(value)")
     .order("name");
   if (error) throw error;
   return (data ?? []).map((p: any) => ({
@@ -169,7 +169,7 @@ export async function getParameter(name: string): Promise<ParamDetail | null> {
   const { data, error } = await supabase
     .from("parameters")
     .select(
-      "name,value_type,formatting,fallback_value,is_mapped,definition,example, mapped_values(value), event_parameters(required,example,value_type,formatting,fallback, events(name,type,change_status))"
+      "name,value_type,formatting,fallback_value,is_mapped,definition,example,mapped_values(value),event_parameters(required,example,value_type,formatting,fallback,events(name,type,change_status))"
     )
     .eq("name", name)
     .maybeSingle();
@@ -210,7 +210,7 @@ export type Mapping = { name: string; values: string[]; usedOn: number };
 export async function getMappings(): Promise<Mapping[]> {
   const { data, error } = await supabase
     .from("parameters")
-    .select("name, mapped_values(value), event_parameters(event_id)")
+    .select("name,mapped_values(value),event_parameters(event_id)")
     .eq("is_mapped", true)
     .order("name");
   if (error) throw error;
@@ -265,10 +265,10 @@ export async function search(q: string): Promise<SearchResults> {
   const like = `%${q}%`;
   // Separate .ilike() queries (robust escaping) then merge unique by name.
   const [evName, evDesc, paName, paDef] = await Promise.all([
-    supabase.from("events").select("name,type, event_parameters(event_id)").ilike("name", like).limit(60),
-    supabase.from("events").select("name,type, event_parameters(event_id)").ilike("description", like).limit(60),
-    supabase.from("parameters").select("name, event_parameters(event_id)").ilike("name", like).limit(60),
-    supabase.from("parameters").select("name, event_parameters(event_id)").ilike("definition", like).limit(60),
+    supabase.from("events").select("name,type,event_parameters(event_id)").ilike("name", like).limit(60),
+    supabase.from("events").select("name,type,event_parameters(event_id)").ilike("description", like).limit(60),
+    supabase.from("parameters").select("name,event_parameters(event_id)").ilike("name", like).limit(60),
+    supabase.from("parameters").select("name,event_parameters(event_id)").ilike("definition", like).limit(60),
   ]);
 
   const eventsByName = new Map<string, any>();

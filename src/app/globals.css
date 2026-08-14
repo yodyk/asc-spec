@@ -57,6 +57,7 @@
 html,body{height:100%}
 body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;-webkit-font-smoothing:antialiased;font-feature-settings:"ss01";accent-color:var(--accent)}
 button{font-family:inherit;cursor:pointer;color:inherit}
+a{color:inherit;text-decoration:none}
 .tile{color:var(--ink)}
 /* browser surfaces — themed from the palette, not left to the UA */
 ::selection{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--ink)}

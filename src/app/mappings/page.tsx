@@ -17,6 +17,7 @@ export default async function MappingsPage() {
           <Link key={m.name} href={`/parameters/${encodeURIComponent(m.name)}`} className="mapblock">
             <div className="mb-head">
               <span className="pname">{m.name}</span>
+              {m.note && <span className="mb-note">{m.note}</span>}
               <span className="mb-meta">
                 {m.values.length} values · used on {m.usedOn} event{m.usedOn !== 1 ? "s" : ""}
               </span>
@@ -26,8 +27,8 @@ export default async function MappingsPage() {
             </div>
             <div className="vals">
               {m.values.map((v) => (
-                <span className="val" key={v}>
-                  {v}
+                <span className={`val ${v.isNew ? "isnew" : ""}`} key={v.value} title={v.definition || undefined}>
+                  {v.value}
                 </span>
               ))}
             </div>

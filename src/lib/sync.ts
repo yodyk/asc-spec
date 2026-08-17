@@ -137,6 +137,144 @@ export async function readSpec(): Promise<PEvent[]> {
   return events;
 }
 
+// ── 1b. read the non-event content tabs ─────────────────────────────────────
+// The canonical mapped-value catalog, per-value definitions, the data layer,
+// requirements, and the FAQ — everything that isn't a per-event table.
+type MapInfo = { values: string[]; note: string };
+type DLParam = {
+  name: string;
+  kind: string;
+  example: string;
+  definition: string;
+  value_type: string;
+  formatting: string;
+  fallback: string;
+  mapped_list_raw: string;
+};
+export type Extras = {
+  mappings: Map<string, MapInfo>; // param → authoritative values + v1.1 note
+  valueDefs: Map<string, { definition: string; isNew: boolean }>; // `${param}::${value}`
+  datalayer: DLParam[];
+  datalayerNotes: string[];
+  requirements: { number: number | null; text: string; change_status: string | null }[];
+  guidelines: { question: string; answer: string }[];
+};
+
+export async function readExtras(): Promise<Extras> {
+  const tabs = await listTabs();
+  const gidFor = (n: string) => tabs.get(n);
+
+  // Parameter_Mappings — the complete, authoritative mapped-value catalog.
+  // Column E holds the full pipe-delimited list; column H (v1.1 NOTES) holds a
+  // per-parameter note ("NEW Values", "Definition Changed", …).
+  const mappings = new Map<string, MapInfo>();
+  const pmGid = gidFor("Parameter_Mappings");
+  if (pmGid) {
+    const g = await getCsvGrid(pmGid);
+    const h = findHeaderRow(g, "parameter name");
+    if (h >= 0) {
+      for (const row of g.slice(h + 1)) {
+        const name = cell(row, 1);
+        if (!name) continue;
+        let values = parseMapped(cell(row, 4));
+        if (!values.length) values = row.slice(8).map((c) => (c || "").trim()).filter(Boolean);
+        if (!values.length) continue;
+        mappings.set(name, { values, note: cell(row, 7) });
+      }
+    }
+  }
+
+  // Mapped Parameter_Guidelines — per-value definitions. The parameter name is
+  // a merged cell (blank on continuation rows), so forward-fill it.
+  const valueDefs = new Map<string, { definition: string; isNew: boolean }>();
+  const mgGid = gidFor("Mapped Parameter_Guidelines");
+  if (mgGid) {
+    const g = await getCsvGrid(mgGid);
+    const h = findHeaderRow(g, "parameter name");
+    if (h >= 0) {
+      let cur = "";
+      for (const row of g.slice(h + 1)) {
+        const p = cell(row, 1);
+        if (p) cur = p;
+        const val = cell(row, 2);
+        if (!cur || !val) continue;
+        valueDefs.set(`${cur}::${val}`, {
+          definition: cell(row, 5),
+          isNew: cell(row, 0).toUpperCase().includes("NEW"),
+        });
+      }
+    }
+  }
+
+  // asc_datalayer — base parameters (event-tab layout, fixed columns) plus a
+  // trailing description blob we keep as a page-level note.
+  const datalayer: DLParam[] = [];
+  const datalayerNotes: string[] = [];
+  const dlGid = gidFor("asc_datalayer");
+  if (dlGid) {
+    const g = await getCsvGrid(dlGid);
+    const h = g.findIndex((r) => (r[1] || "").trim().toLowerCase() === "parameter");
+    if (h >= 0) {
+      for (const row of g.slice(h + 1)) {
+        const name = cell(row, 1);
+        if (!name) continue;
+        if (/\s/.test(name)) {
+          datalayerNotes.push(name); // trailing prose, not a parameter
+          continue;
+        }
+        datalayer.push({
+          name,
+          kind: cell(row, 16),
+          example: cell(row, 3),
+          definition: cell(row, 6),
+          value_type: cell(row, 12),
+          formatting: cell(row, 13),
+          fallback: cell(row, 14),
+          mapped_list_raw: cell(row, 17),
+        });
+      }
+    }
+  }
+
+  // Requirements/Definitions — numbered requirements + the parameter
+  // priority-order list that trails requirement #8.
+  const requirements: Extras["requirements"] = [];
+  const priority: string[] = [];
+  const rqGid = gidFor("Requirements/Definitions");
+  if (rqGid) {
+    const g = await getCsvGrid(rqGid);
+    for (const row of g) {
+      const n = parseFloat(cell(row, 0));
+      const text = cell(row, 2);
+      if (Number.isFinite(n) && text) {
+        requirements.push({ number: n, text, change_status: /new/i.test(cell(row, 1)) ? "NEW" : null });
+      }
+      const pr = cell(row, 3);
+      if (pr) priority.push(pr);
+    }
+    if (priority.length && requirements.length) {
+      const target = requirements.find((r) => /priority order/i.test(r.text)) || requirements[requirements.length - 1];
+      target.text += `\n\nParameter priority order (lowest priority first): ${priority.join(", ")}`;
+    }
+  }
+
+  // General_Guidelines — the FAQ (col B question, col C answer).
+  const guidelines: Extras["guidelines"] = [];
+  const ggGid = gidFor("General_Guidelines");
+  if (ggGid) {
+    const g = await getCsvGrid(ggGid);
+    for (const row of g) {
+      const q = cell(row, 1);
+      const a = cell(row, 2);
+      if (!q || !a) continue;
+      if (/^faq$/i.test(q) || /ga4 standard/i.test(q)) continue;
+      guidelines.push({ question: q, answer: a });
+    }
+  }
+
+  return { mappings, valueDefs, datalayer, datalayerNotes, requirements, guidelines };
+}
+
 // ── 2. mirror to raw_rows ───────────────────────────────────────────────────
 async function mirrorRaw(admin: SupabaseClient, events: PEvent[]) {
   const rows = events.flatMap((e, ei) =>
@@ -169,7 +307,7 @@ async function mirrorRaw(admin: SupabaseClient, events: PEvent[]) {
 // ── 3. promote into the derived tables ──────────────────────────────────────
 type PromoteResult = { seenEvents: Set<string>; seenParams: Set<string>; removed: string[] };
 
-async function promote(admin: SupabaseClient, events: PEvent[]): Promise<PromoteResult> {
+async function promote(admin: SupabaseClient, events: PEvent[], extras: Extras): Promise<PromoteResult> {
   // Build the parameter master (union across every event + the Parameter_List backfill).
   const pmap = new Map<string, PParam>();
   const mappedByParam = new Map<string, Set<string>>();
@@ -192,19 +330,46 @@ async function promote(admin: SupabaseClient, events: PEvent[]): Promise<Promote
       }
     }
 
+  // Fold in the authoritative Parameter_Mappings catalog: it is the source of
+  // truth for the COMPLETE value set, and may list mapped parameters that never
+  // appear on an event tab (those still deserve a parameter row + mappings).
+  for (const [name, info] of extras.mappings) {
+    if (!pmap.has(name)) {
+      pmap.set(name, {
+        name,
+        required: "",
+        example: "",
+        definition: "",
+        value_type: "",
+        formatting: "",
+        fallback: "",
+        type: "Mapped",
+        mapped: info.values,
+        change: "",
+      });
+    }
+    const s = mappedByParam.get(name) || new Set<string>();
+    info.values.forEach((v) => s.add(v));
+    mappedByParam.set(name, s);
+  }
+
   // parameters
-  const paramRows = [...pmap.values()].map((p) => ({
-    name: p.name,
-    value_type: p.value_type || null,
-    formatting: p.formatting || null,
-    fallback_value: p.fallback || null,
-    is_mapped: mappedByParam.has(p.name),
-    definition: p.definition || null,
-    example: p.example || null,
-    is_active: true,
-    content_hash: hash({ v: p.value_type, f: p.formatting, fb: p.fallback, d: p.definition, ex: p.example, m: mappedByParam.has(p.name) }),
-    updated_at: new Date().toISOString(),
-  }));
+  const paramRows = [...pmap.values()].map((p) => {
+    const note = extras.mappings.get(p.name)?.note || null;
+    return {
+      name: p.name,
+      value_type: p.value_type || null,
+      formatting: p.formatting || null,
+      fallback_value: p.fallback || null,
+      is_mapped: mappedByParam.has(p.name),
+      definition: p.definition || null,
+      example: p.example || null,
+      mapping_note: note,
+      is_active: true,
+      content_hash: hash({ v: p.value_type, f: p.formatting, fb: p.fallback, d: p.definition, ex: p.example, m: mappedByParam.has(p.name), n: note }),
+      updated_at: new Date().toISOString(),
+    };
+  });
   const { data: pIds } = await admin
     .from("parameters")
     .upsert(paramRows, { onConflict: "name" })
@@ -260,12 +425,21 @@ async function promote(admin: SupabaseClient, events: PEvent[]): Promise<Promote
     await admin.from("event_parameters").upsert(epRows.slice(i, i + 500), { onConflict: "event_id,parameter_id" });
   }
 
-  // mapped_values
+  // mapped_values (with per-value definitions from Mapped Parameter_Guidelines)
   const mvRows: Record<string, unknown>[] = [];
   for (const [pname, vals] of mappedByParam) {
     const pid = paramId.get(pname);
     if (!pid) continue;
-    for (const v of vals) mvRows.push({ parameter_id: pid, value: v, is_active: true });
+    for (const v of vals) {
+      const gd = extras.valueDefs.get(`${pname}::${v}`);
+      mvRows.push({
+        parameter_id: pid,
+        value: v,
+        definition: gd?.definition || null,
+        change_status: gd?.isNew ? "NEW" : null,
+        is_active: true,
+      });
+    }
   }
   for (let i = 0; i < mvRows.length; i += 500) {
     await admin.from("mapped_values").upsert(mvRows.slice(i, i + 500), { onConflict: "parameter_id,value" });
@@ -361,6 +535,65 @@ async function rebuildChangeLog(admin: SupabaseClient, events: PEvent[], removed
   if (rows.length) await admin.from("change_log").insert(rows);
 }
 
+// ── 5. data layer + reference content ───────────────────────────────────────
+async function writeDataLayer(admin: SupabaseClient, extras: Extras) {
+  const rows: Record<string, unknown>[] = extras.datalayer.map((d, i) => ({
+    name: d.name,
+    kind: d.kind || null,
+    example: d.example || null,
+    definition: d.definition || null,
+    value_type: d.value_type || null,
+    formatting: d.formatting || null,
+    fallback_value: d.fallback || null,
+    mapped_list_raw: d.mapped_list_raw || null,
+    display_order: i,
+    change_status: null,
+    is_active: true,
+    content_hash: hash(d),
+    updated_at: new Date().toISOString(),
+  }));
+  // Trailing description prose → page-level notes (kind='note').
+  extras.datalayerNotes.forEach((text, i) =>
+    rows.push({
+      name: `__note_${i}`,
+      kind: "note",
+      example: null,
+      definition: text,
+      value_type: null,
+      formatting: null,
+      fallback_value: null,
+      mapped_list_raw: null,
+      display_order: 1000 + i,
+      change_status: null,
+      is_active: true,
+      content_hash: hash(text),
+      updated_at: new Date().toISOString(),
+    })
+  );
+  if (rows.length) await admin.from("datalayer_parameters").upsert(rows, { onConflict: "name" });
+
+  const seen = new Set(rows.map((r) => r.name as string));
+  const { data: ex } = await admin.from("datalayer_parameters").select("id,name").eq("is_active", true);
+  const dead = (ex || []).filter((r) => !seen.has(r.name as string));
+  if (dead.length)
+    await admin.from("datalayer_parameters").update({ is_active: false }).in("id", dead.map((r) => r.id));
+}
+
+async function writeContent(admin: SupabaseClient, extras: Extras) {
+  // Small, unkeyed reference tables — full refresh each run.
+  await admin.from("requirements").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  if (extras.requirements.length)
+    await admin.from("requirements").insert(
+      extras.requirements.map((r) => ({ number: r.number, text: r.text, change_status: r.change_status, is_active: true }))
+    );
+
+  await admin.from("guidelines").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  if (extras.guidelines.length)
+    await admin.from("guidelines").insert(
+      extras.guidelines.map((x, i) => ({ question: x.question, answer: x.answer, category: null, sort_order: i, is_active: true }))
+    );
+}
+
 // ── orchestrator ────────────────────────────────────────────────────────────
 export type SyncSummary = {
   ok: boolean;
@@ -382,8 +615,11 @@ export async function runSync(): Promise<SyncSummary> {
 
   try {
     const events = await readSpec();
+    const extras = await readExtras();
     await mirrorRaw(admin, events);
-    const res = await promote(admin, events);
+    const res = await promote(admin, events, extras);
+    await writeDataLayer(admin, extras);
+    await writeContent(admin, extras);
 
     // dedupe / anomaly flags: any event listing the same param twice.
     for (const e of events) {
@@ -415,7 +651,7 @@ export async function runSync(): Promise<SyncSummary> {
           finished_at: new Date().toISOString(),
           rows_read: events.reduce((n, e) => n + e.params.length, 0),
           promoted: summary.events,
-          notes: `events=${summary.events} params=${summary.parameters} removed=${summary.removed}`,
+          notes: `events=${summary.events} params=${summary.parameters} removed=${summary.removed} datalayer=${extras.datalayer.length} requirements=${extras.requirements.length} guidelines=${extras.guidelines.length}`,
         })
         .eq("id", runId);
     return summary;

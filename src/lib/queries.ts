@@ -153,6 +153,7 @@ export type ParamUsage = {
   requirement: "always" | "cond" | "opt";
   example: string | null;
 };
+export type MappedValue = { value: string; definition: string | null; isNew: boolean };
 export type ParamDetail = {
   name: string;
   valueType: string | null;
@@ -161,7 +162,8 @@ export type ParamDetail = {
   isMapped: boolean;
   definition: string | null;
   example: string | null;
-  mapped: string[];
+  mappingNote: string | null;
+  mapped: MappedValue[];
   usage: ParamUsage[];
 };
 
@@ -169,7 +171,7 @@ export async function getParameter(name: string): Promise<ParamDetail | null> {
   const { data, error } = await supabase
     .from("parameters")
     .select(
-      "name,value_type,formatting,fallback_value,is_mapped,definition,example,mapped_values(value),event_parameters(required,example,value_type,formatting,fallback,events(name,type,change_status))"
+      "name,value_type,formatting,fallback_value,is_mapped,definition,example,mapping_note,mapped_values(value,definition,change_status),event_parameters(required,example,value_type,formatting,fallback,events(name,type,change_status))"
     )
     .eq("name", name)
     .maybeSingle();
@@ -199,25 +201,31 @@ export async function getParameter(name: string): Promise<ParamDetail | null> {
     isMapped: data.is_mapped,
     definition: data.definition,
     example: data.example,
-    mapped: (data.mapped_values ?? []).map((m: any) => m.value).sort(),
+    mappingNote: (data as any).mapping_note ?? null,
+    mapped: (data.mapped_values ?? [])
+      .map((m: any) => ({ value: m.value, definition: m.definition ?? null, isNew: m.change_status === "NEW" }))
+      .sort((a: MappedValue, b: MappedValue) => a.value.localeCompare(b.value)),
     usage,
   };
 }
 
 // ── Mappings ────────────────────────────────────────────────────────────────
-export type Mapping = { name: string; values: string[]; usedOn: number };
+export type Mapping = { name: string; values: MappedValue[]; note: string | null; usedOn: number };
 
 export async function getMappings(): Promise<Mapping[]> {
   const { data, error } = await supabase
     .from("parameters")
-    .select("name,mapped_values(value),event_parameters(event_id)")
+    .select("name,mapping_note,mapped_values(value,definition,change_status),event_parameters(event_id)")
     .eq("is_mapped", true)
     .order("name");
   if (error) throw error;
   return (data ?? [])
     .map((p: any) => ({
       name: p.name,
-      values: (p.mapped_values ?? []).map((m: any) => m.value).sort(),
+      note: p.mapping_note ?? null,
+      values: (p.mapped_values ?? [])
+        .map((m: any) => ({ value: m.value, definition: m.definition ?? null, isNew: m.change_status === "NEW" }))
+        .sort((a: MappedValue, b: MappedValue) => a.value.localeCompare(b.value)),
       usedOn: (p.event_parameters ?? []).length,
     }))
     .filter((m: Mapping) => m.values.length > 0);
@@ -327,4 +335,70 @@ export async function getOverview() {
     groups: [...groups.entries()].map(([name, count]) => ({ name, count })),
     recent: changed.slice(0, 5),
   };
+}
+
+// ── Data Layer ──────────────────────────────────────────────────────────────
+export type DataLayerParam = {
+  name: string;
+  kind: string | null;
+  valueType: string | null;
+  formatting: string | null;
+  fallback: string | null;
+  example: string | null;
+  definition: string | null;
+  mapped: string[];
+};
+
+export async function getDataLayer(): Promise<{ params: DataLayerParam[]; notes: string[] }> {
+  try {
+    const { data, error } = await supabase
+      .from("datalayer_parameters")
+      .select("name,kind,value_type,formatting,fallback_value,example,definition,mapped_list_raw,display_order")
+      .order("display_order");
+    if (error) throw error;
+    const rows = data ?? [];
+    const notes = rows
+      .filter((r: any) => r.kind === "note")
+      .map((r: any) => r.definition as string)
+      .filter(Boolean);
+    const paramsList: DataLayerParam[] = rows
+      .filter((r: any) => r.kind !== "note")
+      .map((r: any) => ({
+        name: r.name,
+        kind: r.kind,
+        valueType: r.value_type,
+        formatting: r.formatting,
+        fallback: r.fallback_value,
+        example: r.example,
+        definition: r.definition,
+        mapped: parseMapped(r.mapped_list_raw),
+      }));
+    return { params: paramsList, notes };
+  } catch {
+    // Table not migrated / synced yet → render an empty state instead of 500ing.
+    return { params: [], notes: [] };
+  }
+}
+
+// ── Guidelines (FAQ) + Requirements ─────────────────────────────────────────
+export type Guideline = { question: string; answer: string };
+export async function getGuidelines(): Promise<Guideline[]> {
+  try {
+    const { data, error } = await supabase.from("guidelines").select("question,answer,sort_order").order("sort_order");
+    if (error) throw error;
+    return (data ?? []).map((g: any) => ({ question: g.question, answer: g.answer }));
+  } catch {
+    return [];
+  }
+}
+
+export type Requirement = { number: number | null; text: string; isNew: boolean };
+export async function getRequirements(): Promise<Requirement[]> {
+  try {
+    const { data, error } = await supabase.from("requirements").select("number,text,change_status").order("number");
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({ number: r.number, text: r.text, isNew: r.change_status === "NEW" }));
+  } catch {
+    return [];
+  }
 }

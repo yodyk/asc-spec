@@ -38,6 +38,15 @@ export default async function ParameterDetailPage({ params }: { params: { param:
 
       <p className="ddesc">{p.definition ? p.definition : <span className="p2note">Description coming soon.</span>}</p>
 
+      {p.mappingNote && (
+        <div className="notebar">
+          <span className="i">
+            <Icon name="info" size={16} />
+          </span>
+          <div>{p.mappingNote}</div>
+        </div>
+      )}
+
       <div className="sectlabel">At a glance</div>
       <div className="metagrid">
         <div className="m">
@@ -67,13 +76,28 @@ export default async function ParameterDetailPage({ params }: { params: { param:
             </span>
             <div>The only accepted values this parameter can take.</div>
           </div>
-          <div className="vals" style={{ marginTop: "14px" }}>
-            {p.mapped.map((v) => (
-              <span className="val" key={v}>
-                {v}
-              </span>
-            ))}
-          </div>
+          {p.mapped.some((v) => v.definition) ? (
+            <div className="valdefs">
+              {p.mapped.map((v) => (
+                <div className="valdef" key={v.value}>
+                  <span className="vdterm">
+                    <span className="val">{v.value}</span>
+                    {v.isNew && <span className="valnew">new</span>}
+                  </span>
+                  {v.definition && <span className="vdtext">{v.definition}</span>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="vals" style={{ marginTop: "14px" }}>
+              {p.mapped.map((v) => (
+                <span className="val" key={v.value}>
+                  {v.value}
+                  {v.isNew && <span className="valnew">new</span>}
+                </span>
+              ))}
+            </div>
+          )}
         </>
       )}
 

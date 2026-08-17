@@ -105,8 +105,11 @@ export function Sidebar({
 
         <NavItem href="/parameters" icon="parameters" label="Parameters" count={counts.parameters} />
         <NavItem href="/mappings" icon="mappings" label="Mappings" count={counts.mappings} />
+        <NavItem href="/datalayer" icon="datalayer" label="Data Layer" />
         <div className="navlabel">Track</div>
         <NavItem href="/changes" icon="changes" label="What’s changed" count={counts.changed} warn />
+        <div className="navlabel">Reference</div>
+        <NavItem href="/guidelines" icon="guidelines" label="Guidelines" />
       </nav>
 
       <div className="navbtm">

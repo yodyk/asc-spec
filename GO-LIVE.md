@@ -82,3 +82,24 @@ account needed**. You only add two secrets to Vercel and redeploy:
    You should get back a small JSON summary like `{"ok":true,"events":23,...}`.
 
 Until you add those, the cron just no-ops safely and the seeded data stays put.
+
+---
+
+## Adding the Data Layer + Guidelines (one-time migration)
+
+The Data Layer page, the FAQ/Requirements, per-mapped-value definitions, and the
+complete Parameter_Mappings value lists are all populated by the sync — but they
+need one new table + a couple of columns first.
+
+1. **Supabase → SQL Editor → New query.** Open `supabase/migrations/0002_datalayer.sql`,
+   copy all, paste, **Run**. (Adds the `datalayer_parameters` table plus a
+   `mapping_note` / `sort_order` column. Safe to run more than once.)
+2. **Re-run the sync** so the new content loads:
+   ```bash
+   curl -X POST https://asc-spec.vercel.app/api/sync -H "Authorization: Bearer YOUR-SYNC_SECRET"
+   ```
+   The JSON summary's `notes` will now include `datalayer=…`, `requirements=…`,
+   `guidelines=…`. The **Data Layer** and **Guidelines** pages fill in immediately.
+
+> Run the migration **before** the sync — the sync writes to those new columns, so
+> it will error until the migration has been applied.

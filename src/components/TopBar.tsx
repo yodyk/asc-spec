@@ -11,7 +11,9 @@ const SECTION_LABEL: Record<string, string> = {
   events: "Events",
   parameters: "Parameters",
   mappings: "Mappings",
+  datalayer: "Data Layer",
   changes: "What’s changed",
+  guidelines: "Guidelines",
   search: "Search",
 };
 

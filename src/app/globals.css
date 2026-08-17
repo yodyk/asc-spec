@@ -334,6 +334,48 @@ table.tbl{width:100%;min-width:600px;border-collapse:collapse}
 .empty p{margin:4px 0}
 .vals{display:flex;flex-wrap:wrap;gap:7px}
 .val{font-family:var(--mono);font-size:12px;background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--line);padding:3px 9px;border-radius:5px}
+.val.isnew{border-color:var(--new);color:var(--new)}
+.val .valnew,.valnew{margin-left:6px;font-family:var(--sans);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;color:var(--new);vertical-align:middle}
+
+/* per-value definition list (parameter page) */
+.valdefs{margin-top:14px;display:flex;flex-direction:column;gap:1px;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.valdef{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:16px;padding:10px 14px;background:var(--surface);border-top:1px solid var(--line)}
+.valdef:first-child{border-top:none}
+.vdterm{display:flex;align-items:center}
+.vdtext{font-size:13px;color:var(--ink-soft);line-height:1.5}
+
+/* note bar — surfaces trailing sheet notes instead of dropping them */
+.notebar{margin-top:16px;display:flex;gap:11px;background:var(--surface-2);border:1px solid var(--line);border-left:2px solid var(--accent);border-radius:6px;padding:12px 15px;font-size:13.5px;color:var(--ink-soft);line-height:1.55;max-width:80ch}
+.notebar .i{color:var(--accent);display:grid;flex-shrink:0}
+.notebar.big{margin-top:20px;font-size:14px}
+.notebar p{margin:0 0 8px}
+.notebar p:last-child{margin-bottom:0}
+
+.mb-note{font-family:var(--sans);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--accent-2);background:var(--accent-soft);padding:2px 8px;border-radius:5px}
+.emptystate{margin-top:28px;padding:28px;border:1px dashed var(--line);border-radius:6px;text-align:center;color:var(--ink-soft)}
+.emptystate p{margin:0 0 4px}
+
+/* requirements */
+.reqlist{list-style:none;margin:16px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.req{display:flex;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.reqnum{flex-shrink:0;width:26px;height:26px;border-radius:6px;background:var(--surface-2);color:var(--ink-soft);font-family:var(--mono);font-size:13px;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.reqbody{font-size:13.5px;color:var(--ink-soft);line-height:1.55;max-width:80ch}
+.reqbody p{margin:0 0 8px}
+.reqbody p:last-child{margin-bottom:0}
+
+/* FAQ accordion */
+.faqlist{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.faq{border:1px solid var(--line);border-radius:6px;background:var(--surface);overflow:hidden}
+.faq summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 16px;font-size:14px;font-weight:500;color:var(--ink)}
+.faq summary::-webkit-details-marker{display:none}
+.faq-q{flex:1}
+.faq-chev{color:var(--faint);display:grid;transition:transform .15s}
+.faq[open] .faq-chev{transform:rotate(90deg)}
+.faq:hover{border-color:var(--accent)}
+.faq-a{padding:0 16px 16px 44px;font-size:13.5px;color:var(--ink-soft);line-height:1.6;max-width:80ch}
+.faq-a p{margin:0 0 10px}
+.faq-a p:last-child{margin-bottom:0}
+
 /* mappings — one reference block per parameter */
 .maplist{display:flex;flex-direction:column;gap:12px;margin-top:16px}
 .mapblock{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:6px;background:var(--surface);box-shadow:var(--shadow);padding:15px 18px 16px;cursor:pointer;transition:border-color .12s}

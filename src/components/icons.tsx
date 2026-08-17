@@ -1,6 +1,6 @@
 // Tabler Icons (MIT), embedded verbatim — one consistent stroke system.
 export type IconName =
-'overview' | 'events' | 'parameters' | 'mappings' | 'changes' | 'chevR' | 'search' | 'info' | 'copy' | 'check' | 'plus' | 'pencil' | 'external' | 'chevL' | 'menu' | 'sun' | 'system' | 'moon';
+'overview' | 'events' | 'parameters' | 'mappings' | 'changes' | 'chevR' | 'search' | 'info' | 'copy' | 'check' | 'plus' | 'pencil' | 'external' | 'chevL' | 'menu' | 'sun' | 'system' | 'moon' | 'datalayer' | 'guidelines';
 
 const PATHS: Record<string, string> = {
   overview: `<path d="M4 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/><path d="M14 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/><path d="M4 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/><path d="M14 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4"/>`,
@@ -21,6 +21,8 @@ const PATHS: Record<string, string> = {
   sun: `<path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"/>`,
   system: `<path d="M3 5a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-10"/><path d="M7 20h10"/><path d="M9 16v4"/><path d="M15 16v4"/>`,
   moon: `<path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454l0 .008"/>`,
+  datalayer: `<path d="M12 6m-8 0a8 3 0 1 0 16 0a8 3 0 1 0 -16 0"/><path d="M4 6v6a8 3 0 0 0 16 0v-6"/><path d="M4 12v6a8 3 0 0 0 16 0v-6"/>`,
+  guidelines: `<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 16v.01"/><path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483"/>`,
 };
 
 export function Icon({ name, size = 24, strokeWidth = 2, className }: { name: IconName; size?: number; strokeWidth?: number; className?: string }) {

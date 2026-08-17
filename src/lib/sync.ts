@@ -570,7 +570,10 @@ async function writeDataLayer(admin: SupabaseClient, extras: Extras) {
       updated_at: new Date().toISOString(),
     })
   );
-  if (rows.length) await admin.from("datalayer_parameters").upsert(rows, { onConflict: "name" });
+  if (rows.length) {
+    const { error } = await admin.from("datalayer_parameters").upsert(rows, { onConflict: "name" });
+    if (error) throw new Error(`datalayer write failed: ${error.message}`);
+  }
 
   const seen = new Set(rows.map((r) => r.name as string));
   const { data: ex } = await admin.from("datalayer_parameters").select("id,name").eq("is_active", true);

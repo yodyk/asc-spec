@@ -2,6 +2,10 @@ import { getDataLayer } from "@/lib/queries";
 import { DataLayerTable } from "@/components/DataLayerTable";
 import { Icon } from "@/components/icons";
 
+// Always re-query on request — this page's data changes with each sync.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function DataLayerPage() {
   const { params, notes } = await getDataLayer();
 

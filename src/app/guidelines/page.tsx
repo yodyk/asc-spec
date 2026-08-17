@@ -1,6 +1,10 @@
 import { getGuidelines, getRequirements } from "@/lib/queries";
 import { Icon } from "@/components/icons";
 
+// Always re-query on request — this page's data changes with each sync.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function Paragraphs({ text }: { text: string }) {
   return (
     <>

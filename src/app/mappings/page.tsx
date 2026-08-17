@@ -19,7 +19,8 @@ export default async function MappingsPage() {
               <span className="pname">{m.name}</span>
               {m.note && <span className="mb-note">{m.note}</span>}
               <span className="mb-meta">
-                {m.values.length} values · used on {m.usedOn} event{m.usedOn !== 1 ? "s" : ""}
+                {m.values.length} values ·{" "}
+                {m.usedOn > 0 ? `used on ${m.usedOn} event${m.usedOn !== 1 ? "s" : ""}` : "global"}
               </span>
               <span className="mb-go">
                 <Icon name="chevR" size={16} />

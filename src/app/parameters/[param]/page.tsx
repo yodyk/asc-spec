@@ -30,9 +30,15 @@ export default async function ParameterDetailPage({ params }: { params: { param:
           ) : (
             <span className="ctag eng">Dynamic · free text</span>
           )}
-          <span className="ctag eng">
-            Used on {p.usage.length} event{p.usage.length !== 1 ? "s" : ""}
-          </span>
+          {p.usage.length > 0 ? (
+            <span className="ctag eng">
+              Used on {p.usage.length} event{p.usage.length !== 1 ? "s" : ""}
+            </span>
+          ) : (
+            <span className="gtag" title="Applies to every event">
+              Global · all events
+            </span>
+          )}
         </div>
       </div>
 
@@ -101,11 +107,26 @@ export default async function ParameterDetailPage({ params }: { params: { param:
         </>
       )}
 
-      <div className="sectlabel">
-        Used on {p.usage.length} event{p.usage.length !== 1 ? "s" : ""}
-      </div>
-      <div className="tablewrap">
-        <table className="tbl">
+      {p.usage.length === 0 ? (
+        <>
+          <div className="sectlabel">Where it applies</div>
+          <div className="notebar">
+            <span className="i">
+              <Icon name="info" size={18} />
+            </span>
+            <div>
+              This is a <b>global parameter</b> — it applies to every event rather than being tied to a specific one,
+              so the spec defines it once (in the data layer / mappings) instead of repeating it on each event.
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="sectlabel">
+            Used on {p.usage.length} event{p.usage.length !== 1 ? "s" : ""}
+          </div>
+          <div className="tablewrap">
+            <table className="tbl">
           <thead>
             <tr>
               <th>Event</th>
@@ -148,8 +169,10 @@ export default async function ParameterDetailPage({ params }: { params: { param:
               return rows;
             })}
           </tbody>
-        </table>
-      </div>
+            </table>
+          </div>
+        </>
+      )}
     </>
   );
 }

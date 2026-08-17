@@ -56,7 +56,7 @@ export function Sidebar({
         </div>
         <div>
           <div className="bt1">Spec Explorer</div>
-          <div className="bt2">STANDARD v{SPEC_VERSION}</div>
+          <div className="bt2">SPECIFICATION v{SPEC_VERSION}</div>
         </div>
       </div>
 
